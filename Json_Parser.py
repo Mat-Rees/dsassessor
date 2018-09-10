@@ -6,9 +6,10 @@ Created on Mon Sep  3 11:08:55 2018
 @author: mathewrees
 """
 
-import json
+import json, traceback
 import pandas as pd
 import jsonpickle
+import re
 from pandas.io.json import json_normalize
 
 
@@ -30,20 +31,32 @@ class JsonParser():
     # First Stage Flattening:
     # Takes a json response (as json object) and creates a flattened dataframe
     def firstFlattening(self, jsonInput):
-        
+    
         print("*****Datatype getting flattened is: {0}".format(type(jsonInput)))
         if isinstance(jsonInput, str):
-            try:
-                jsonObj = json.loads(jsonInput)
-                flatdata = json_normalize(jsonObj)
-                return flatdata
-                
-            except json.decoder.JSONDecodeError:
             
+            try:
+                if jsonInput[:1] == "{":
+                    print("First Character is: {0}".format(jsonInput[:1]))
+                    print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+                    print(jsonInput)
+                    jsonObj = json.loads(jsonInput)
+                    flatdata = json_normalize(jsonObj)
+                    return flatdata
+                else:
+                    print("string is not a json")
+                    # handle it like a string
+                    # do and return something
+                    
+                    
+                # json.decoder.JSONDecodeError
+            except Exception as e:
+                print(e)
                 print("More than one JSON object in the array")
                 eachJsonDF = pd.DataFrame()
                 # itemCounter = 0
                 for eachJsonObject in jsonInput:
+                    print(eachJsonObject, type(eachJsonObject))   
                     jsonObj = json.loads(eachJsonObject)
                     thisJsonDF = JsonParser.flattenJsonProcess(self, jsonObj)
                     eachJsonDF.append(thisJsonDF)
@@ -72,9 +85,9 @@ class JsonParser():
             elementDataType = type(elementVal)
            
             if elementDataType is list and len(elementVal) is 1:
+                # LIST LENGTH IS 1 SUBPROCESS
                 print("'{0}' column is a list that needs further flattening".format(column))
                 # make the 1-element list into a dataframe
-                
                 nextDF = json_normalize(elementVal[0])
                 # Create a dict for updating then update the column headers using this dictionary
                 # Append the new column headers to the original column header for a more consistent index
@@ -89,21 +102,57 @@ class JsonParser():
                 # expandedDF.to_csv("output.csv")
                 # make the new, expanded dataframe
                 inputDF = expandedDF
+                '''
+                else:
+                    counter = 0
+                    for item in elementVal:
+                        counter = counter + 1
+                        newColumnStr = column + "." + str(counter)
+                        print(type(inputDF.iloc[0][column]))
+                        print(inputDF.iloc[0][column])
+                        print(newColumnStr) '''
                 
             if elementDataType is list and len(elementVal) > 1:
                 print("THE LIST IS MORE THAN 1 ITEM")
-                # Make a new dataframe; load the multi-item list into it item-by-item
-                masterDataFrame = pd.DataFrame()
-              
-                for item in elementVal:
-                    oneDataFrame = self.flattenJsonProcess(item)
-                    masterDataFrame.append(oneDataFrame)
-                    masterDataFrame.to_csv("testingListDF.csv")
-                    print(masterDataFrame)
+                #print("InputDF into flatteningLoop is: {0}".format(inputDF))
+                print("Column title is: {0}".format(column))
                 
-                print(len(elementVal))
-                return masterDataFrame
-        
+                # if the item in the array isn't a json
+                if elementVal[:2] is not '{':
+                    breakoutDF = pd.DataFrame()
+                    counter = 0
+                    for item in elementVal:
+                        
+                        counter = counter + 1
+                        newColumnStr = column + "." + str(counter)
+                        
+                        stringInput = JsonParser.jsonPretreatment(inputDF.iloc[0][column])
+                        
+                        testDF = JsonParser.flattenJsonProcess(self, stringInput)
+                        breakoutDF.append(testDF)
+
+                        # add a new row to the dataframe
+                        print(type(inputDF.iloc[0][column]))
+                        print(inputDF.iloc[0][column])
+                        print(newColumnStr)
+                        
+                    breakoutDF.to_csv("{0}".format(newColumnStr))
+                    
+                    
+                else:
+                    # Make a new dataframe; load the multi-item list into it item-by-item
+                    masterDataFrame = pd.DataFrame()
+    
+                    for item in elementVal:
+    
+                        oneDataFrame = self.flattenJsonProcess(item)
+                        masterDataFrame.append(oneDataFrame)
+                        masterDataFrame.to_csv("testingListDF.csv")
+                        print(masterDataFrame)
+                    
+                    # print(len(elementVal))
+                    return masterDataFrame
+            
         return inputDF
         
      
@@ -111,17 +160,18 @@ class JsonParser():
     def checkColumnTypes(self, inputDF):
         print("Checking DataFrame Column's data types")
         print(type(inputDF))
-        if (type(inputDF)) is None:
+        if inputDF is None:
             print("THIS ISNT A TYPE ")
-        
-        for column in inputDF.columns:
-            print(type(inputDF.iloc[0][column]))
-            elementVal = inputDF.iloc[0][column]
-            elementDataType = type(elementVal)
-            
-            if elementDataType is list:
-                return 0
-        return 1
+            return 2
+        else:
+            for column in inputDF.columns:
+                print(type(inputDF.iloc[0][column]))
+                elementVal = inputDF.iloc[0][column]
+                elementDataType = type(elementVal)
+                
+                if elementDataType is list:
+                    return 0
+            return 1
     
             
     
@@ -132,6 +182,8 @@ class JsonParser():
             outputDF = JsonParser.flatteningLoop(self, inputDF)
             outputDF.to_csv('testDFout.csv')
             return outputDF, "active"
+        elif moreFlattening == 2:
+            return inputDF, "done"
         else:
             print("done")
             return inputDF, "done"
@@ -150,8 +202,24 @@ class JsonParser():
             
         return mainDF
             
-
+    def jsonPretreatment(self, String):
+        treatedString = String.replace('\n', ' ')
+        treatedString = treatedString.replace("{}", "\"Nan\"")
+        treatedString = treatedString.replace("[]", "\"Nan\"")
+        treatedString = treatedString.replace(r'""', "\"Nan\"")
+        '''
+        my_regex = "r'" + treatedString
+        # replace [ followed by anything except { with "[ 
+        treatedString = re.sub(r"\[(?!{)","\"[", my_regex)
+        
+        more_regex = "r'" + treatedString
+        # replace ] preceded by anything except } with ]"
+        treatedString = re.sub(r"(?!<=})]","]\"", more_regex)
+        '''
+        return treatedString
   
+'''   
+    
 jString = """
             {
               "meta": {
@@ -184,13 +252,11 @@ resultDF = jp.flattenJsonProcess(jString)
 resultDF.to_csv("output.csv")
 print(resultDF)
 
-'''
 jp = JsonParser()
 flatdata = jp.firstFlattening(jString)
 flatterDF = jp.flatteningLoop(flatdata)
 flatterDF.to_csv("output.csv")
 
 print(flatterDF)
-
-  '''      
-
+   
+'''
