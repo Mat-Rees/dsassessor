@@ -42,7 +42,7 @@ class TestsComplex(unittest.TestCase):
     jsonString3 = """ {"dummy": [{"A": {"B": 1}}]} """
     jsonString4 = """ {"response": [{"nested_response": [{"second_nest": {"final": 1}}]}]}"""
     jsonString5 = """ {"response": [{"nested_response": [{"second_nest": {"final": 1, "array":[]}}]}]}"""
-    jsonString6 = """ {"response": [{"nestedresponse":[{"one":"1"}, {"two":"2"}]}]} """
+    jsonString6 = """ {"response": [{"nestedresponse":[{"id":"1"}, {"id":"2"}]}]} """
     
     
     
@@ -54,7 +54,7 @@ class TestsComplex(unittest.TestCase):
         testDF = jp.processManager(jsonString)
         print(testDF)
     ''' 
-    
+    '''
     def test_flatteningLoopEx2(self):
         jp = JsonParserComplex()
         jsonString = self.jsonString2
@@ -81,14 +81,14 @@ class TestsComplex(unittest.TestCase):
         jsonString = self.jsonString5
         testDF = jp.processManager(jsonString)
         print(testDF)
+    '''
     
- 
     def test_flatteningLoopEx6(self):
         jp = JsonParserComplex()
         jsonString = self.jsonString6
         testDF = jp.processManager(jsonString)
         print(testDF)
- 
+    
         
 if __name__ == '__main__':
     unittest.main()

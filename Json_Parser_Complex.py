@@ -29,17 +29,27 @@ class JsonParserComplex():
         
         while self.processStatus == "Active":
             
-            col, val, instructionInt = JsonParserComplex.checkColumnTypes(self, DF)
-            print("col: {0}, val: {1} and type {3}, Instruction Integer: {2}".format(col, val, instructionInt, type(val)))
+            col, cellVal, instructionInt = JsonParserComplex.checkColumnTypes(self, DF)
+            print("col: {0}, val: {1} and type {3}, Instruction Integer: {2}".format(col, cellVal, instructionInt, type(cellVal)))
+            
+            
             if instructionInt == 0:
                 print("Json is flattened, ending process")
                 self.processStatus = "Off"
                 
             
-            
             elif instructionInt == 1:
-                DF = JsonParserComplex.processListOfOneJson(self, col, val)
+                DF = JsonParserComplex.processListOfOneJson(self, col, cellVal)
                 
+                
+            elif instructionInt == 2:
+                print("DOING MANY JSON SUBPROCESS")
+                DF = JsonParserComplex.processListOfManyJson(self, col, cellVal)
+                break
+                
+                
+                
+            
         # elif instructionInt = 1: do subprocess
         # elif instructionInt = 2: do subprocess
         # elif inst.... etc
@@ -96,14 +106,17 @@ class JsonParserComplex():
                     if len(elementVal) == 1:
                         print("Dataframe contains a list of with single json, sending to subprocess")
                         return column, DF, 1 # More Processing
+                    
                     elif len(elementVal) > 1 and type(elementVal[0]) is dict:
                         print("Dataframe contains a list of jsons, sending to subprocess")
                         return column, DF, 2
+                    
                     elif len(elementVal) > 1 and type(elementVal[0]) is str:
                         print("Dataframe contains a list of strings, sending to subprocess")
                         return column, DF, 3
-                else:    # break
-                    return column, DF, 0 # Finish Process
+                
+                else:   
+                    return column, DF, 0 
                 
         
     
@@ -153,8 +166,18 @@ class JsonParserComplex():
  
     
     
-    def processListOfManyJson():
-        return DF
+    def processListOfManyJson(self, originCol, jsonList):
+        # loop through all the items in the list and do a Json_Normalize
+        # Json_Normalize should then be replaced with 
+        extractedVal = jsonList.iloc[0][originCol]
+        
+        for item in extractedVal:
+            
+            df = json_normalize(item)
+            self.masterDF = self.masterDF.append(df)
+            print(self.masterDF)
+        
+        
         
     def processListOfStrings():
         return DF
